@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conference Photo Upload</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>Share your photos</h1>
+    <p class="subtitle">Upload a photo from the conference and tag where it was taken.</p>
+
+    <form id="upload-form">
+      <label for="photo">Photo</label>
+      <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required />
+      <img id="preview" alt="Selected photo preview" hidden />
+
+      <label for="room">Room</label>
+      <select id="room" name="room" required></select>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="3" placeholder="What's happening in this photo?"></textarea>
+
+      <label for="contributor">Your name</label>
+      <input type="text" id="contributor" name="contributor" placeholder="Optional" />
+
+      <button type="submit" id="submit-btn">Upload</button>
+    </form>
+
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
