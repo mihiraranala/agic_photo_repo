@@ -274,7 +274,13 @@ const lightboxDelete = document.getElementById("lightbox-delete");
 function openLightbox(photo) {
   lightboxImage.src = photo.image_url;
   lightboxImage.alt = photo.description || photo.room;
-  const parts = [photo.room, photo.contributor, photo.description].filter(Boolean);
+  const uploadedAt = photo.created_at
+    ? new Date(photo.created_at).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+  const parts = [photo.room, photo.contributor, photo.description, uploadedAt].filter(Boolean);
   lightboxCaption.textContent = parts.join(" — ");
   lightboxDelete.hidden = !isAdmin;
   lightboxDelete.onclick = () => {
@@ -310,6 +316,10 @@ document.querySelector(".gallery-next").addEventListener("click", () => {
 function buildGalleryItem(photo) {
   const item = document.createElement("div");
   item.className = "gallery-item";
+  // Exposed on the DOM (not just fetched into `photos`) so future
+  // chronological filtering/mapping can query it directly off the
+  // rendered gallery items.
+  if (photo.created_at) item.dataset.createdAt = photo.created_at;
 
   const img = document.createElement("img");
   img.src = photo.image_url;
