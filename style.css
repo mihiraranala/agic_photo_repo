@@ -165,6 +165,10 @@ body {
   gap: 6px;
 }
 
+#admin-login-form[hidden] {
+  display: none;
+}
+
 #admin-login-form input {
   width: auto;
   padding: 4px 8px;
@@ -185,6 +189,10 @@ body {
   gap: 8px;
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+#admin-status[hidden] {
+  display: none;
 }
 
 #admin-status button {
