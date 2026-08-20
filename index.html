@@ -3,15 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Conference Photo Dashboard</title>
+  <title>AGIC Education and Training Symposium — Photo Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <header class="site-header">
+    <h1>AGIC Education and Training Symposium</h1>
+  </header>
   <div class="dashboard">
     <main class="main-panel">
       <section class="panel floorplan-panel">
         <div class="panel-header">
-          <h2>Floor plan heatmap</h2>
+          <h2>Live Room Radar</h2>
           <div class="heatmap-legend">
             <span>cold</span>
             <span class="bar"></span>
@@ -27,7 +30,7 @@
 
       <section class="panel gallery-panel">
         <div class="panel-header">
-          <h2>Recent photos</h2>
+          <h2>Fresh off the Floor</h2>
           <div class="admin-controls" id="admin-controls">
             <button type="button" id="admin-login-toggle" class="admin-link">Admin</button>
             <form id="admin-login-form" hidden>
@@ -57,7 +60,7 @@
       </button>
 
       <div class="sidebar-content">
-        <h1>Share your photos</h1>
+        <h2>Join in on the Fun</h2>
         <p class="subtitle">Upload a photo from the conference and tag where it was taken.</p>
 
         <form id="upload-form">

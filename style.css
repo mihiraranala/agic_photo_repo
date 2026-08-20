@@ -41,12 +41,31 @@ body {
   border-radius: 5px;
 }
 
+/* ---------- Site header ---------- */
+
+.site-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.site-header h1 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
 /* ---------- Dashboard grid ---------- */
 
 .dashboard {
   display: grid;
   grid-template-columns: 1fr var(--sidebar-width);
-  height: 100vh;
+  height: calc(100vh - 52px);
   transition: grid-template-columns 0.2s ease;
 }
 
@@ -370,6 +389,11 @@ body {
   width: var(--sidebar-width);
   opacity: 1;
   transition: opacity 0.15s ease;
+}
+
+.sidebar-content h2 {
+  margin: 0 0 4px;
+  font-size: 1.5em;
 }
 
 .dashboard.sidebar-collapsed .sidebar-content {
