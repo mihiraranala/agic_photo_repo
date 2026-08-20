@@ -216,6 +216,29 @@ function sizeCanvasToImage() {
   drawHeatmap(lastCounts);
 }
 
+// Cold -> hot colormap, matching the gradient bar in the panel header's
+// legend: blue -> cyan -> green -> yellow -> red.
+const HEAT_COLOR_STOPS = [
+  [0, 46, 92, 220],
+  [0.25, 36, 209, 196],
+  [0.5, 87, 227, 76],
+  [0.75, 244, 225, 43],
+  [1, 255, 60, 40],
+];
+
+function heatColorAt(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 0; i < HEAT_COLOR_STOPS.length - 1; i++) {
+    const [ta, ra, ga, ba] = HEAT_COLOR_STOPS[i];
+    const [tb, rb, gb, bb] = HEAT_COLOR_STOPS[i + 1];
+    if (t >= ta && t <= tb) {
+      const lt = (t - ta) / (tb - ta || 1);
+      return [ra + (rb - ra) * lt, ga + (gb - ga) * lt, ba + (bb - ba) * lt];
+    }
+  }
+  return HEAT_COLOR_STOPS[HEAT_COLOR_STOPS.length - 1].slice(1);
+}
+
 function drawHeatmap(counts) {
   lastCounts = counts;
   const width = heatmapCanvas.clientWidth;
@@ -224,8 +247,11 @@ function drawHeatmap(counts) {
 
   heatmapCtx.clearRect(0, 0, width, height);
 
+  // Rooms sit close together on a real floor plan (e.g. adjacent ballroom
+  // sections), so blobs stay small relative to the image to avoid one
+  // room's glow swallowing its neighbor's.
   const maxCount = Math.max(1, ...Object.values(counts));
-  const baseRadius = Math.min(width, height) * 0.16;
+  const baseRadius = Math.min(width, height) * 0.05;
 
   for (const room of ROOMS) {
     const pos = ROOM_POSITIONS[room];
@@ -235,23 +261,24 @@ function drawHeatmap(counts) {
     const intensity = count / maxCount;
     const x = (pos.x / 100) * width;
     const y = (pos.y / 100) * height;
-    const radius = baseRadius * (0.6 + 0.4 * intensity);
-    const hue = (1 - intensity) * 240; // 240 = blue (cold), 0 = red (hot)
+    const radius = baseRadius * (0.7 + 0.5 * intensity);
+    const [r, g, b] = heatColorAt(intensity);
 
     const gradient = heatmapCtx.createRadialGradient(x, y, 0, x, y, radius);
-    gradient.addColorStop(0, `hsla(${hue}, 90%, 50%, 0.8)`);
-    gradient.addColorStop(0.6, `hsla(${hue}, 90%, 50%, 0.35)`);
-    gradient.addColorStop(1, `hsla(${hue}, 90%, 50%, 0)`);
+    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.85)`);
+    gradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, 0.4)`);
+    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
 
     heatmapCtx.fillStyle = gradient;
     heatmapCtx.beginPath();
     heatmapCtx.arc(x, y, radius, 0, Math.PI * 2);
     heatmapCtx.fill();
 
-    heatmapCtx.font = "600 13px sans-serif";
-    heatmapCtx.fillStyle = "#1a1a1a";
+    heatmapCtx.font = "700 11px sans-serif";
+    heatmapCtx.fillStyle = "#fff";
     heatmapCtx.textAlign = "center";
-    heatmapCtx.fillText(`${room} (${count})`, x, y + radius + 14);
+    heatmapCtx.textBaseline = "middle";
+    heatmapCtx.fillText(String(count), x, y);
   }
 }
 

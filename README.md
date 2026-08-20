@@ -32,17 +32,17 @@ upload.
 Open `config.js` and:
 
 - Paste your `firebaseConfig` values into `FIREBASE_CONFIG`.
-- Edit the `ROOMS` array to match your venue (e.g. `["Room A", "Room B",
-  "Room C"]`).
-- Replace `floorplan.svg` with your real floor plan image (any image
-  format works — update `FLOOR_PLAN_IMAGE` in `config.js` if you use a
-  different filename).
-- Update `ROOM_POSITIONS` so each room name maps to where it actually
-  sits on your floor plan image, as a percentage of the image's
-  width/height (`x: 0` = left edge, `x: 100` = right edge, same for
-  `y` top/bottom). This is what the heatmap uses to place each room's
-  hot spot — the easiest way to get these numbers is to open the image,
-  eyeball each room's center, and estimate its position as a percentage.
+- Edit the `ROOMS` array to match your venue. It currently lists every
+  labeled space on `floorplan.jpeg` (meeting rooms and amenities alike).
+- `FLOOR_PLAN_IMAGE` points at `floorplan.jpeg` in the repo root. Swap
+  in a different image any time by replacing that file (or changing the
+  filename in `config.js`).
+- `ROOM_POSITIONS` maps each room name to where it sits on the floor
+  plan image, as a percentage of the image's width/height (`x: 0` = left
+  edge, `x: 100` = right edge, same for `y` top/bottom). This is what
+  the heatmap uses to place each room's hot spot. The current values are
+  eyeballed estimates — open the dashboard, see where each dot lands
+  relative to its room label, and nudge the numbers until they line up.
 
 ## 3. Deploy the security rules
 
@@ -63,8 +63,7 @@ into the console's Rules tab for each product.)
 ## 4. Host it
 
 This is a static site (`index.html`, `style.css`, `app.js`, `config.js`,
-`floorplan.svg` or your replacement image) — serve it however you like.
-Simplest options:
+`floorplan.jpeg`) — serve it however you like. Simplest options:
 
 - **GitHub Pages**: push this repo, enable Pages on `main` in repo
   settings, done.
