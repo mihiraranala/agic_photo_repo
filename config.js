@@ -71,14 +71,9 @@ export const ROOM_POSITIONS = {
   "Foyer": { x: 38, y: 84 },
 };
 
-// Firebase project config — replace with the values from your Firebase
-// project settings (Project settings > General > Your apps > SDK setup).
-// See README.md for step-by-step setup instructions.
-export const FIREBASE_CONFIG = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME",
-};
+// Supabase project connection info — from your project's
+// Settings > API page. The anon (public) key is meant to be exposed in
+// client-side code like this; access is controlled by the Row Level
+// Security policies in supabase/schema.sql, not by keeping this secret.
+export const SUPABASE_URL = "https://REPLACE_ME.supabase.co";
+export const SUPABASE_ANON_KEY = "REPLACE_ME";

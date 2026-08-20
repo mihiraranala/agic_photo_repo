@@ -1,32 +1,13 @@
-import { ROOMS, ROOM_POSITIONS, FLOOR_PLAN_IMAGE, FIREBASE_CONFIG } from "./config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {
-  getAuth,
-  signInAnonymously,
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+import { ROOMS, ROOM_POSITIONS, FLOOR_PLAN_IMAGE, SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const MAX_FILE_BYTES = 15 * 1024 * 1024; // keep in sync with storage.rules
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // keep in sync with the "photos" bucket's file_size_limit
+const MAX_IMAGE_DIMENSION = 1600; // longest edge in px, after resize
+const JPEG_QUALITY = 0.82;
 const GALLERY_LIMIT = 60;
+const PHOTOS_BUCKET = "photos";
 
-const app = initializeApp(FIREBASE_CONFIG);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- Upload form (sidebar) ----------
 
@@ -60,9 +41,37 @@ function setStatus(message, kind) {
 }
 
 async function ensureSignedIn() {
-  if (auth.currentUser) return auth.currentUser;
-  const credential = await signInAnonymously(auth);
-  return credential.user;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) return session.user;
+
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) throw error;
+  return data.user;
+}
+
+// Downscales + re-encodes the photo before upload. Phone camera photos are
+// routinely 8-12MB, which would blow past MAX_FILE_BYTES and be slow for
+// every dashboard viewer to load — shrinking to a sane display size fixes
+// both at once.
+async function compressImage(file) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+      "image/jpeg",
+      JPEG_QUALITY
+    );
+  });
 }
 
 form.addEventListener("submit", async (event) => {
@@ -73,37 +82,44 @@ form.addEventListener("submit", async (event) => {
     setStatus("Please choose a photo.", "error");
     return;
   }
-  if (file.size > MAX_FILE_BYTES) {
-    setStatus("Photo is too large (max 15MB).", "error");
-    return;
-  }
 
   const room = roomSelect.value;
   const description = document.getElementById("description").value.trim();
   const contributor = document.getElementById("contributor").value.trim();
 
   submitBtn.disabled = true;
-  setStatus("Uploading…");
+  setStatus("Compressing photo…");
 
   try {
+    const compressed = await compressImage(file);
+
+    if (compressed.size > MAX_FILE_BYTES) {
+      setStatus("Photo is too large even after compression. Try a different photo.", "error");
+      submitBtn.disabled = false;
+      return;
+    }
+
+    setStatus("Uploading…");
+
     const user = await ensureSignedIn();
 
-    const fileExt = file.name.split(".").pop() || "jpg";
-    const storagePath = `photos/${user.uid}/${Date.now()}.${fileExt}`;
-    const storageRef = ref(storage, storagePath);
+    const storagePath = `${user.id}/${Date.now()}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from(PHOTOS_BUCKET)
+      .upload(storagePath, compressed, { contentType: "image/jpeg" });
+    if (uploadError) throw uploadError;
 
-    await uploadBytes(storageRef, file, { contentType: file.type });
-    const imageUrl = await getDownloadURL(storageRef);
+    const { data: urlData } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(storagePath);
 
-    await addDoc(collection(db, "photos"), {
+    const { error: insertError } = await supabase.from("photos").insert({
       room,
       description,
       contributor: contributor || "Anonymous",
-      imageUrl,
-      storagePath,
-      uploadedBy: user.uid,
-      createdAt: serverTimestamp(),
+      image_url: urlData.publicUrl,
+      storage_path: storagePath,
+      uploaded_by: user.id,
     });
+    if (insertError) throw insertError;
 
     form.reset();
     preview.hidden = true;
@@ -134,7 +150,7 @@ const lightboxCaption = document.getElementById("lightbox-caption");
 const lightboxClose = document.getElementById("lightbox-close");
 
 function openLightbox(photo) {
-  lightboxImage.src = photo.imageUrl;
+  lightboxImage.src = photo.image_url;
   lightboxImage.alt = photo.description || photo.room;
   const parts = [photo.room, photo.contributor, photo.description].filter(Boolean);
   lightboxCaption.textContent = parts.join(" — ");
@@ -170,7 +186,7 @@ function renderGallery(photos) {
     item.className = "gallery-item";
 
     const img = document.createElement("img");
-    img.src = photo.imageUrl;
+    img.src = photo.image_url;
     img.alt = photo.description || photo.room;
     img.loading = "lazy";
     item.appendChild(img);
@@ -290,15 +306,10 @@ if (window.ResizeObserver) {
 
 // ---------- Live photos feed ----------
 
-// No `limit` here: the heatmap needs a count of every submission, not
-// just the most recent batch. The gallery slider below just shows the
-// first GALLERY_LIMIT of them.
-const photosQuery = query(collection(db, "photos"), orderBy("createdAt", "desc"));
+let photos = [];
 
-onSnapshot(photosQuery, (snapshot) => {
-  const photos = snapshot.docs.map((doc) => doc.data());
-
-  photoCountBadge.textContent = `${snapshot.size} photo${snapshot.size === 1 ? "" : "s"}`;
+function refresh() {
+  photoCountBadge.textContent = `${photos.length} photo${photos.length === 1 ? "" : "s"}`;
   renderGallery(photos.slice(0, GALLERY_LIMIT));
 
   const counts = {};
@@ -306,4 +317,36 @@ onSnapshot(photosQuery, (snapshot) => {
     counts[photo.room] = (counts[photo.room] || 0) + 1;
   }
   drawHeatmap(counts);
-});
+}
+
+async function loadPhotos() {
+  const { data, error } = await supabase
+    .from("photos")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+  photos = data;
+  refresh();
+}
+
+// One initial fetch, then apply realtime deltas in place — avoids
+// re-reading the whole table every time anyone uploads a photo.
+supabase
+  .channel("photos-changes")
+  .on("postgres_changes", { event: "*", schema: "public", table: "photos" }, (payload) => {
+    if (payload.eventType === "INSERT") {
+      photos = [payload.new, ...photos];
+    } else if (payload.eventType === "UPDATE") {
+      photos = photos.map((p) => (p.id === payload.new.id ? payload.new : p));
+    } else if (payload.eventType === "DELETE") {
+      photos = photos.filter((p) => p.id !== payload.old.id);
+    }
+    refresh();
+  })
+  .subscribe();
+
+loadPhotos();

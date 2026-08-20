@@ -46,8 +46,11 @@ Open `config.js` and:
 
 ## 3. Deploy the security rules
 
-The rules require an anonymous-auth session and cap uploads at 15MB,
-image files only, one folder per uploader. Deploy them with the
+The rules require an anonymous-auth session and cap uploads at 5MB,
+image files only, one folder per uploader. In practice the app resizes
+every photo to a 1600px-long-edge JPEG before upload (see "Where
+uploads go" below), so the 5MB cap is a safety net rather than a limit
+attendees will normally hit. Deploy the rules with the
 [Firebase CLI](https://firebase.google.com/docs/cli):
 
 ```bash
@@ -78,7 +81,12 @@ conference.
 
 ## Where uploads go
 
-- Images: Firebase Storage, under `photos/<anonymous-uid>/<timestamp>.<ext>`.
+- Before upload, the browser resizes the photo to a max of 1600px on
+  its longest edge and re-encodes it as a JPEG at 82% quality (see
+  `compressImage` in `app.js`). This keeps the dashboard's gallery and
+  heatmap fast for everyone viewing it, and means a normal 8-12MB phone
+  photo uploads as a few hundred KB instead of being rejected.
+- Images: Firebase Storage, under `photos/<anonymous-uid>/<timestamp>.jpg`.
 - Metadata: Firestore collection `photos`, one document per upload with
   `room`, `description`, `contributor`, `imageUrl`, `storagePath`,
   `uploadedBy`, `createdAt`.
