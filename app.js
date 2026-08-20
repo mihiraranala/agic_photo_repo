@@ -6,6 +6,8 @@ const MAX_IMAGE_DIMENSION = 1600; // longest edge in px, after resize
 const JPEG_QUALITY = 0.82;
 const GALLERY_LIMIT = 60;
 const PHOTOS_BUCKET = "photos";
+const UPLOAD_COOLDOWN_MS = 15 * 1000; // client-side friction only — the real cap is the rate limit in submit_photo()
+const ACCESS_CODE_STORAGE_KEY = "conferenceAccessCode";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -17,6 +19,13 @@ const preview = document.getElementById("preview");
 const roomSelect = document.getElementById("room");
 const submitBtn = document.getElementById("submit-btn");
 const status = document.getElementById("status");
+const honeypot = document.getElementById("website");
+const accessCodeInput = document.getElementById("access-code");
+
+let lastSubmitAt = 0;
+
+const savedAccessCode = localStorage.getItem(ACCESS_CODE_STORAGE_KEY);
+if (savedAccessCode) accessCodeInput.value = savedAccessCode;
 
 for (const room of ROOMS) {
   const option = document.createElement("option");
@@ -77,6 +86,27 @@ async function compressImage(file) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  // Honeypot: a real visitor can't see or fill this field in, so a
+  // non-empty value means a bot auto-filled the whole form. Bail out
+  // silently — no error message, so a scripted bot gets no signal that
+  // it was caught and no reason to adapt.
+  if (honeypot.value) {
+    return;
+  }
+
+  const msSinceLastSubmit = Date.now() - lastSubmitAt;
+  if (msSinceLastSubmit < UPLOAD_COOLDOWN_MS) {
+    const secondsLeft = Math.ceil((UPLOAD_COOLDOWN_MS - msSinceLastSubmit) / 1000);
+    setStatus(`Please wait ${secondsLeft}s before uploading another photo.`, "error");
+    return;
+  }
+
+  const accessCode = accessCodeInput.value.trim();
+  if (!accessCode) {
+    setStatus("Please enter the conference code.", "error");
+    return;
+  }
+
   const file = photoInput.files[0];
   if (!file) {
     setStatus("Please choose a photo.", "error");
@@ -111,18 +141,36 @@ form.addEventListener("submit", async (event) => {
 
     const { data: urlData } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(storagePath);
 
-    const { error: insertError } = await supabase.from("photos").insert({
-      room,
-      description,
-      contributor: contributor || "Anonymous",
-      image_url: urlData.publicUrl,
-      storage_path: storagePath,
-      uploaded_by: user.id,
+    // submit_photo() is the only way a photos row gets created — it
+    // checks the conference code and rate limit server-side (see
+    // supabase/schema.sql), so this can't be bypassed by calling the
+    // Supabase API directly and skipping this file entirely.
+    const { error: submitError } = await supabase.rpc("submit_photo", {
+      p_room: room,
+      p_description: description,
+      p_contributor: contributor || "Anonymous",
+      p_image_url: urlData.publicUrl,
+      p_storage_path: storagePath,
+      p_access_code: accessCode,
     });
-    if (insertError) throw insertError;
 
+    if (submitError) {
+      if (submitError.code === "EV001") {
+        setStatus("Incorrect conference code — check the code from event signage.", "error");
+        return;
+      }
+      if (submitError.code === "EV002") {
+        setStatus("You've hit the upload limit for now — please wait a bit and try again.", "error");
+        return;
+      }
+      throw submitError;
+    }
+
+    localStorage.setItem(ACCESS_CODE_STORAGE_KEY, accessCode);
+    lastSubmitAt = Date.now();
     form.reset();
     preview.hidden = true;
+    accessCodeInput.value = accessCode; // form.reset() clears this too — restore it so repeat uploaders don't retype it
     setStatus("Thanks! Your photo was uploaded.", "success");
   } catch (err) {
     console.error(err);

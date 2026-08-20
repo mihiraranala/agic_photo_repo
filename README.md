@@ -6,32 +6,69 @@ A single page with three parts:
   heatmap showing which rooms are getting the most photo submissions.
 - **Gallery slider** (bottom left) — a scrollable strip of the latest
   uploaded photos; click one to view it full-size.
-- **Upload form** (collapsible right sidebar) — pick a photo, tag the
-  room, add a description and name, and upload. No login screen.
+- **Upload form** (collapsible right sidebar) — enter the conference
+  code, pick a photo, tag the room, add a description and name, and
+  upload. No login screen.
 
-Photos are stored in Firebase and the dashboard updates live as people
-upload.
+Photos are stored in Supabase (Postgres + Storage) and the dashboard
+updates live as people upload. Only people who know the conference
+access code can upload — anyone can view the gallery/heatmap.
 
-## 1. Create the Firebase project
+## 1. Create the Supabase project
 
-1. Go to https://console.firebase.google.com and create a new project
-   (free "Spark" plan is enough for a single event).
-2. In the project, go to **Build > Authentication > Sign-in method** and
-   enable **Anonymous**. This lets attendees upload without creating an
-   account while still keeping the write rules non-public.
-3. Go to **Build > Firestore Database**, click **Create database**, and
-   start in production mode (any region is fine).
-4. Go to **Build > Storage** and click **Get started** (also production
-   mode).
-5. Go to **Project settings > General**, scroll to **Your apps**, click
-   the **</>** (web) icon, register an app (no hosting needed), and copy
-   the `firebaseConfig` object it gives you.
+1. Go to https://supabase.com, sign up/in, and create a **New project**
+   (the free tier is enough for a single event). Pick a region close to
+   your venue. Set a database password — generate a random one, you
+   won't need to remember it day to day (see project creation options
+   below).
+2. On the project-creation screen: enable **Data API** (required — the
+   app's JS talks to Supabase through it), **Automatically expose new
+   tables** (so `photos` is queryable without an extra manual step),
+   and **Automatic RLS** (secure-by-default for any table you add
+   later). Choose plain **Postgres**, not "Postgres with OrioleDB" —
+   OrioleDB is an experimental alpha storage engine, not something a
+   small conference app needs.
+3. **Authentication → Sign In / Providers** → enable **Anonymous
+   Sign-Ins**. This lets attendees upload without creating an account.
+   Consider also enabling CAPTCHA (hCaptcha/Turnstile) here — Supabase
+   already rate-limits anonymous sign-ins to 30/hour per IP by default.
+4. **SQL Editor → New query** → paste the entire contents of
+   `supabase/schema.sql` → **Run**. This creates the `photos` table and
+   its Row Level Security policies, the `event_config` table holding
+   the conference access code, the `submit_photo()` function that
+   gates uploads on that code, and the `photos` Storage bucket (public
+   read, 5MB/image cap, JPEG/PNG/WebP only). The file is safe to re-run
+   any time you update it.
+5. **Project Settings → API** → copy the **Project URL** and the
+   **`anon` `public`** key (not `service_role` — that one must never
+   appear in client-side code).
 
-## 2. Configure this app
+## 2. Set the conference access code
+
+Uploads are gated by a shared code word announced/printed at the
+event — attendees enter it in the upload form alongside their photo.
+Right after running `supabase/schema.sql`, set the real code (it seeds
+as a placeholder):
+
+```sql
+update public.event_config set access_code = 'YOUR_CODE_HERE' where id = true;
+```
+
+Run that anytime in the SQL Editor. You can rotate the code the same
+way, any time, with no app redeploy needed — anyone still using the
+old code will just get "Incorrect conference code" on their next
+upload. Viewing the gallery/heatmap is unaffected either way; only
+uploading requires the code.
+
+## 3. Configure this app
 
 Open `config.js` and:
 
-- Paste your `firebaseConfig` values into `FIREBASE_CONFIG`.
+- Paste your Project URL and `anon` key into `SUPABASE_URL` /
+  `SUPABASE_ANON_KEY`. (Safe to commit — see the comment in that file
+  for why; access is controlled by the RLS policies and the
+  `submit_photo()` function in `supabase/schema.sql`, not by keeping
+  this key secret.)
 - Edit the `ROOMS` array to match your venue. It currently lists every
   labeled space on `floorplan.jpeg` (meeting rooms and amenities alike).
 - `FLOOR_PLAN_IMAGE` points at `floorplan.jpeg` in the repo root. Swap
@@ -44,53 +81,52 @@ Open `config.js` and:
   eyeballed estimates — open the dashboard, see where each dot lands
   relative to its room label, and nudge the numbers until they line up.
 
-## 3. Deploy the security rules
-
-The rules require an anonymous-auth session and cap uploads at 5MB,
-image files only, one folder per uploader. In practice the app resizes
-every photo to a 1600px-long-edge JPEG before upload (see "Where
-uploads go" below), so the 5MB cap is a safety net rather than a limit
-attendees will normally hit. Deploy the rules with the
-[Firebase CLI](https://firebase.google.com/docs/cli):
+## 4. Push to GitHub
 
 ```bash
-npm install -g firebase-tools
-firebase login
-firebase init firestore storage   # point at this directory, keep existing rules files
-firebase deploy --only firestore:rules,storage:rules
+git add -A
+git commit -m "Your message"
+git push
 ```
 
-(Or paste the contents of `firestore.rules` / `storage.rules` directly
-into the console's Rules tab for each product.)
+## 5. Deploy on Vercel
 
-## 4. Host it
+1. https://vercel.com → sign in with GitHub → **Add New → Project** →
+   import this repo.
+2. It's a plain static site (no build step) — Framework Preset:
+   **Other**, leave Build Command/Output Directory at their defaults.
+   **Deploy**.
+3. Every push to `main` auto-redeploys from then on.
 
-This is a static site (`index.html`, `style.css`, `app.js`, `config.js`,
-`floorplan.jpeg`) — serve it however you like. Simplest options:
+## 6. Generate the QR code
 
-- **GitHub Pages**: push this repo, enable Pages on `main` in repo
-  settings, done.
-- **Firebase Hosting**: `firebase init hosting`, then
-  `firebase deploy --only hosting`.
-
-## 5. Generate the QR code
-
-Point any QR code generator at the page's public URL (e.g.
-`https://<you>.github.io/agic_photo_repo/`). Print/display it at the
+Point any QR code generator at the deployed `.vercel.app` URL (or your
+custom domain). Print/display it — and the access code — at the
 conference.
+
+## Guardrails already in place
+
+- **Conference access code** — enforced in Postgres (`submit_photo()`
+  in `supabase/schema.sql`), not just in the browser, so it can't be
+  bypassed by calling the Supabase API directly.
+- **Rate limit** — 10 uploads per rolling 10 minutes per signed-in
+  session, also enforced in Postgres.
+- **Honeypot field** — a hidden form field that trips up simple bots.
+- **Client-side cooldown** — 15 seconds between uploads per browser tab
+  (UX friction only; the real cap is the rate limit above).
+- **Image compression** — every photo is resized to a 1600px-long-edge
+  JPEG in the browser before upload (see `compressImage` in `app.js`),
+  keeping the gallery/heatmap fast and normal 8-12MB phone photos well
+  under the 5MB Storage cap.
 
 ## Where uploads go
 
-- Before upload, the browser resizes the photo to a max of 1600px on
-  its longest edge and re-encodes it as a JPEG at 82% quality (see
-  `compressImage` in `app.js`). This keeps the dashboard's gallery and
-  heatmap fast for everyone viewing it, and means a normal 8-12MB phone
-  photo uploads as a few hundred KB instead of being rejected.
-- Images: Firebase Storage, under `photos/<anonymous-uid>/<timestamp>.jpg`.
-- Metadata: Firestore collection `photos`, one document per upload with
-  `room`, `description`, `contributor`, `imageUrl`, `storagePath`,
-  `uploadedBy`, `createdAt`.
+- Images: Supabase Storage, bucket `photos`, under `<anonymous-uid>/<timestamp>.jpg`.
+- Metadata: Postgres table `public.photos`, one row per upload with
+  `room`, `description`, `contributor`, `image_url`, `storage_path`,
+  `uploaded_by`, `created_at` — created only via `submit_photo()`,
+  never by a direct insert.
 
-To pull everything out later for sharing, export the `photos` collection
-from the Firestore console (or write a short script with the Admin SDK)
-and download the images from Storage.
+To pull everything out later for sharing, use the Supabase dashboard's
+Table Editor (export `photos` as CSV) and download images from the
+Storage bucket.

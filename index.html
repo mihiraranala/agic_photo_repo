@@ -49,6 +49,16 @@
         <p class="subtitle">Upload a photo from the conference and tag where it was taken.</p>
 
         <form id="upload-form">
+          <!-- Honeypot: real visitors never see or fill this in (hidden
+               off-screen); simple bots that auto-fill every field do. -->
+          <div class="honeypot-field" aria-hidden="true">
+            <label for="website">Website</label>
+            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <label for="access-code">Conference code</label>
+          <input type="text" id="access-code" name="access-code" autocomplete="off" required placeholder="From event signage" />
+
           <label for="photo">Photo</label>
           <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required />
           <img id="preview" alt="Selected photo preview" hidden />
