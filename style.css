@@ -404,6 +404,10 @@ button:disabled {
   z-index: 100;
 }
 
+.lightbox[hidden] {
+  display: none;
+}
+
 .lightbox img {
   max-width: 90vw;
   max-height: 80vh;
