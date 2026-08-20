@@ -76,4 +76,4 @@ export const ROOM_POSITIONS = {
 // client-side code like this; access is controlled by the Row Level
 // Security policies in supabase/schema.sql, not by keeping this secret.
 export const SUPABASE_URL = "https://kujlmxpbrvbxovftgudp.supabase.co";
-export const SUPABASE_ANON_KEY = "sb_publishable_ISlHtZQyWFBGZNX8Sk8ZqQ__6ALH2kZok";
+export const SUPABASE_ANON_KEY = "sb_publishable_ISlHtZQyWFBGZNX8Sk8ZqQ__6ALH2kZ";
