@@ -317,6 +317,40 @@ body {
   padding: 4px;
 }
 
+/* When the photos overflow the wrapper, .marquee replaces manual
+   scrolling with a slow, continuous right-to-left auto-scroll. The
+   track is rendered twice back to back (see app.js) and animated
+   exactly -50% so the loop point is seamless. */
+.gallery-slider.marquee {
+  overflow: hidden;
+}
+
+.gallery-slider.marquee .gallery-nav {
+  display: none;
+}
+
+.gallery-track.marquee {
+  flex: 0 0 auto;
+  width: max-content;
+  overflow: visible;
+  scroll-snap-type: none;
+  animation: gallery-marquee linear infinite;
+  animation-duration: var(--marquee-duration, 60s);
+}
+
+.gallery-slider.marquee:hover .gallery-track.marquee {
+  animation-play-state: paused;
+}
+
+@keyframes gallery-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .gallery-empty {
   margin: auto;
   color: var(--text-dim);

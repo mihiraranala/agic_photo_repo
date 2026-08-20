@@ -293,9 +293,12 @@ lightbox.addEventListener("click", (event) => {
 
 // ---------- Gallery slider ----------
 
+const gallerySlider = document.getElementById("gallery-slider");
 const galleryTrack = document.getElementById("gallery-track");
 const galleryEmpty = document.getElementById("gallery-empty");
 const photoCountBadge = document.getElementById("photo-count");
+
+const MARQUEE_SPEED_PX_PER_SEC = 25; // slow, readable pace
 
 document.querySelector(".gallery-prev").addEventListener("click", () => {
   galleryTrack.scrollBy({ left: -320, behavior: "smooth" });
@@ -304,40 +307,61 @@ document.querySelector(".gallery-next").addEventListener("click", () => {
   galleryTrack.scrollBy({ left: 320, behavior: "smooth" });
 });
 
+function buildGalleryItem(photo) {
+  const item = document.createElement("div");
+  item.className = "gallery-item";
+
+  const img = document.createElement("img");
+  img.src = photo.image_url;
+  img.alt = photo.description || photo.room;
+  img.loading = "lazy";
+  item.appendChild(img);
+
+  const label = document.createElement("span");
+  label.className = "gallery-item-room";
+  label.textContent = photo.room;
+  item.appendChild(label);
+
+  if (isAdmin) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "gallery-item-delete";
+    deleteBtn.setAttribute("aria-label", "Delete photo");
+    deleteBtn.textContent = "×";
+    deleteBtn.addEventListener("click", (event) => {
+      event.stopPropagation(); // don't also open the lightbox
+      deletePhoto(photo);
+    });
+    item.appendChild(deleteBtn);
+  }
+
+  item.addEventListener("click", () => openLightbox(photo));
+  return item;
+}
+
 function renderGallery(photos) {
+  gallerySlider.classList.remove("marquee");
+  galleryTrack.classList.remove("marquee");
+  galleryTrack.style.removeProperty("--marquee-duration");
   galleryTrack.querySelectorAll(".gallery-item").forEach((el) => el.remove());
   galleryEmpty.hidden = photos.length > 0;
 
   for (const photo of photos) {
-    const item = document.createElement("div");
-    item.className = "gallery-item";
+    galleryTrack.appendChild(buildGalleryItem(photo));
+  }
 
-    const img = document.createElement("img");
-    img.src = photo.image_url;
-    img.alt = photo.description || photo.room;
-    img.loading = "lazy";
-    item.appendChild(img);
-
-    const label = document.createElement("span");
-    label.className = "gallery-item-room";
-    label.textContent = photo.room;
-    item.appendChild(label);
-
-    if (isAdmin) {
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "gallery-item-delete";
-      deleteBtn.setAttribute("aria-label", "Delete photo");
-      deleteBtn.textContent = "×";
-      deleteBtn.addEventListener("click", (event) => {
-        event.stopPropagation(); // don't also open the lightbox
-        deletePhoto(photo);
-      });
-      item.appendChild(deleteBtn);
+  // If the photos overflow the visible strip, switch to a slow
+  // right-to-left marquee instead of requiring manual scrolling. The
+  // track is doubled up so translateX(-50%) loops seamlessly.
+  const overflows = galleryTrack.scrollWidth > galleryTrack.clientWidth + 1;
+  if (overflows && photos.length > 0) {
+    const singleSetWidth = galleryTrack.scrollWidth;
+    for (const photo of photos) {
+      galleryTrack.appendChild(buildGalleryItem(photo));
     }
-
-    item.addEventListener("click", () => openLightbox(photo));
-    galleryTrack.appendChild(item);
+    galleryTrack.style.setProperty("--marquee-duration", `${singleSetWidth / MARQUEE_SPEED_PX_PER_SEC}s`);
+    gallerySlider.classList.add("marquee");
+    galleryTrack.classList.add("marquee");
   }
 }
 
@@ -490,3 +514,11 @@ supabase
   .subscribe();
 
 loadPhotos();
+
+// Re-check overflow (and thus marquee on/off) when the gallery's
+// available width changes, e.g. the sidebar collapsing or a resize.
+let galleryResizeTimer;
+new ResizeObserver(() => {
+  clearTimeout(galleryResizeTimer);
+  galleryResizeTimer = setTimeout(() => renderGallery(photos.slice(0, GALLERY_LIMIT)), 150);
+}).observe(gallerySlider);
