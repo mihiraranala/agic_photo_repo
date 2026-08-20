@@ -1,4 +1,4 @@
-import { ROOMS, FIREBASE_CONFIG } from "./config.js";
+import { ROOMS, ROOM_POSITIONS, FLOOR_PLAN_IMAGE, FIREBASE_CONFIG } from "./config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getAuth,
@@ -8,6 +8,9 @@ import {
   getFirestore,
   collection,
   addDoc,
+  query,
+  orderBy,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {
@@ -18,11 +21,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // keep in sync with storage.rules
+const GALLERY_LIMIT = 60;
 
 const app = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// ---------- Upload form (sidebar) ----------
 
 const form = document.getElementById("upload-form");
 const photoInput = document.getElementById("photo");
@@ -108,4 +114,169 @@ form.addEventListener("submit", async (event) => {
   } finally {
     submitBtn.disabled = false;
   }
+});
+
+// ---------- Sidebar collapse ----------
+
+const dashboard = document.querySelector(".dashboard");
+const sidebarToggle = document.getElementById("sidebar-toggle");
+
+sidebarToggle.addEventListener("click", () => {
+  const collapsed = dashboard.classList.toggle("sidebar-collapsed");
+  sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+});
+
+// ---------- Lightbox ----------
+
+const lightbox = document.getElementById("lightbox");
+const lightboxImage = document.getElementById("lightbox-image");
+const lightboxCaption = document.getElementById("lightbox-caption");
+const lightboxClose = document.getElementById("lightbox-close");
+
+function openLightbox(photo) {
+  lightboxImage.src = photo.imageUrl;
+  lightboxImage.alt = photo.description || photo.room;
+  const parts = [photo.room, photo.contributor, photo.description].filter(Boolean);
+  lightboxCaption.textContent = parts.join(" — ");
+  lightbox.hidden = false;
+}
+
+lightboxClose.addEventListener("click", () => {
+  lightbox.hidden = true;
+});
+lightbox.addEventListener("click", (event) => {
+  if (event.target === lightbox) lightbox.hidden = true;
+});
+
+// ---------- Gallery slider ----------
+
+const galleryTrack = document.getElementById("gallery-track");
+const galleryEmpty = document.getElementById("gallery-empty");
+const photoCountBadge = document.getElementById("photo-count");
+
+document.querySelector(".gallery-prev").addEventListener("click", () => {
+  galleryTrack.scrollBy({ left: -320, behavior: "smooth" });
+});
+document.querySelector(".gallery-next").addEventListener("click", () => {
+  galleryTrack.scrollBy({ left: 320, behavior: "smooth" });
+});
+
+function renderGallery(photos) {
+  galleryTrack.querySelectorAll(".gallery-item").forEach((el) => el.remove());
+  galleryEmpty.hidden = photos.length > 0;
+
+  for (const photo of photos) {
+    const item = document.createElement("div");
+    item.className = "gallery-item";
+
+    const img = document.createElement("img");
+    img.src = photo.imageUrl;
+    img.alt = photo.description || photo.room;
+    img.loading = "lazy";
+    item.appendChild(img);
+
+    const label = document.createElement("span");
+    label.className = "gallery-item-room";
+    label.textContent = photo.room;
+    item.appendChild(label);
+
+    item.addEventListener("click", () => openLightbox(photo));
+    galleryTrack.appendChild(item);
+  }
+}
+
+// ---------- Floor plan heatmap ----------
+
+const floorplanImage = document.getElementById("floorplan-image");
+const floorplanStage = document.getElementById("floorplan-stage");
+const heatmapCanvas = document.getElementById("heatmap-canvas");
+const heatmapCtx = heatmapCanvas.getContext("2d");
+
+floorplanImage.src = FLOOR_PLAN_IMAGE;
+
+let lastCounts = {};
+
+function sizeCanvasToImage() {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  const imgRect = floorplanImage.getBoundingClientRect();
+  const width = imgRect.width;
+  const height = imgRect.height;
+  if (width === 0 || height === 0) return;
+
+  heatmapCanvas.style.left = `${imgRect.left - stageRect.left}px`;
+  heatmapCanvas.style.top = `${imgRect.top - stageRect.top}px`;
+  heatmapCanvas.style.width = `${width}px`;
+  heatmapCanvas.style.height = `${height}px`;
+
+  const dpr = window.devicePixelRatio || 1;
+  heatmapCanvas.width = width * dpr;
+  heatmapCanvas.height = height * dpr;
+  heatmapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  drawHeatmap(lastCounts);
+}
+
+function drawHeatmap(counts) {
+  lastCounts = counts;
+  const width = heatmapCanvas.clientWidth;
+  const height = heatmapCanvas.clientHeight;
+  if (width === 0 || height === 0) return;
+
+  heatmapCtx.clearRect(0, 0, width, height);
+
+  const maxCount = Math.max(1, ...Object.values(counts));
+  const baseRadius = Math.min(width, height) * 0.16;
+
+  for (const room of ROOMS) {
+    const pos = ROOM_POSITIONS[room];
+    const count = counts[room] || 0;
+    if (!pos || count === 0) continue;
+
+    const intensity = count / maxCount;
+    const x = (pos.x / 100) * width;
+    const y = (pos.y / 100) * height;
+    const radius = baseRadius * (0.6 + 0.4 * intensity);
+    const hue = (1 - intensity) * 240; // 240 = blue (cold), 0 = red (hot)
+
+    const gradient = heatmapCtx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `hsla(${hue}, 90%, 50%, 0.8)`);
+    gradient.addColorStop(0.6, `hsla(${hue}, 90%, 50%, 0.35)`);
+    gradient.addColorStop(1, `hsla(${hue}, 90%, 50%, 0)`);
+
+    heatmapCtx.fillStyle = gradient;
+    heatmapCtx.beginPath();
+    heatmapCtx.arc(x, y, radius, 0, Math.PI * 2);
+    heatmapCtx.fill();
+
+    heatmapCtx.font = "600 13px sans-serif";
+    heatmapCtx.fillStyle = "#1a1a1a";
+    heatmapCtx.textAlign = "center";
+    heatmapCtx.fillText(`${room} (${count})`, x, y + radius + 14);
+  }
+}
+
+floorplanImage.addEventListener("load", sizeCanvasToImage);
+window.addEventListener("resize", sizeCanvasToImage);
+if (window.ResizeObserver) {
+  new ResizeObserver(sizeCanvasToImage).observe(floorplanStage);
+}
+
+// ---------- Live photos feed ----------
+
+// No `limit` here: the heatmap needs a count of every submission, not
+// just the most recent batch. The gallery slider below just shows the
+// first GALLERY_LIMIT of them.
+const photosQuery = query(collection(db, "photos"), orderBy("createdAt", "desc"));
+
+onSnapshot(photosQuery, (snapshot) => {
+  const photos = snapshot.docs.map((doc) => doc.data());
+
+  photoCountBadge.textContent = `${snapshot.size} photo${snapshot.size === 1 ? "" : "s"}`;
+  renderGallery(photos.slice(0, GALLERY_LIMIT));
+
+  const counts = {};
+  for (const photo of photos) {
+    counts[photo.room] = (counts[photo.room] || 0) + 1;
+  }
+  drawHeatmap(counts);
 });

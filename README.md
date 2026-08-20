@@ -1,9 +1,16 @@
-# Conference Photo Upload
+# Conference Photo Dashboard
 
-A single mobile page attendees reach by scanning a QR code: pick a photo,
-tag the room, add a description and their name, and upload. No login
-screen, no public gallery yet — photos land in Firebase for you to pull
-later.
+A single page with three parts:
+
+- **Floor plan heatmap** (top left) — the venue floor plan with a live
+  heatmap showing which rooms are getting the most photo submissions.
+- **Gallery slider** (bottom left) — a scrollable strip of the latest
+  uploaded photos; click one to view it full-size.
+- **Upload form** (collapsible right sidebar) — pick a photo, tag the
+  room, add a description and name, and upload. No login screen.
+
+Photos are stored in Firebase and the dashboard updates live as people
+upload.
 
 ## 1. Create the Firebase project
 
@@ -27,6 +34,15 @@ Open `config.js` and:
 - Paste your `firebaseConfig` values into `FIREBASE_CONFIG`.
 - Edit the `ROOMS` array to match your venue (e.g. `["Room A", "Room B",
   "Room C"]`).
+- Replace `floorplan.svg` with your real floor plan image (any image
+  format works — update `FLOOR_PLAN_IMAGE` in `config.js` if you use a
+  different filename).
+- Update `ROOM_POSITIONS` so each room name maps to where it actually
+  sits on your floor plan image, as a percentage of the image's
+  width/height (`x: 0` = left edge, `x: 100` = right edge, same for
+  `y` top/bottom). This is what the heatmap uses to place each room's
+  hot spot — the easiest way to get these numbers is to open the image,
+  eyeball each room's center, and estimate its position as a percentage.
 
 ## 3. Deploy the security rules
 
@@ -46,8 +62,9 @@ into the console's Rules tab for each product.)
 
 ## 4. Host it
 
-This is a static site (`index.html`, `style.css`, `app.js`, `config.js`)
-— serve it however you like. Simplest options:
+This is a static site (`index.html`, `style.css`, `app.js`, `config.js`,
+`floorplan.svg` or your replacement image) — serve it however you like.
+Simplest options:
 
 - **GitHub Pages**: push this repo, enable Pages on `main` in repo
   settings, done.

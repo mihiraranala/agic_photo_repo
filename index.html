@@ -3,33 +3,73 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Conference Photo Upload</title>
+  <title>Conference Photo Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="card">
-    <h1>Share your photos</h1>
-    <p class="subtitle">Upload a photo from the conference and tag where it was taken.</p>
+  <div class="dashboard">
+    <main class="main-panel">
+      <section class="panel floorplan-panel">
+        <div class="panel-header">
+          <h2>Floor plan heatmap</h2>
+          <span id="photo-count" class="badge">0 photos</span>
+        </div>
+        <div class="floorplan-stage" id="floorplan-stage">
+          <img id="floorplan-image" alt="Venue floor plan" />
+          <canvas id="heatmap-canvas"></canvas>
+        </div>
+      </section>
 
-    <form id="upload-form">
-      <label for="photo">Photo</label>
-      <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required />
-      <img id="preview" alt="Selected photo preview" hidden />
+      <section class="panel gallery-panel">
+        <div class="panel-header">
+          <h2>Recent photos</h2>
+        </div>
+        <div class="gallery-slider">
+          <button type="button" class="gallery-nav gallery-prev" aria-label="Scroll left">&#8249;</button>
+          <div class="gallery-track" id="gallery-track">
+            <p class="gallery-empty" id="gallery-empty">No photos yet — be the first to upload!</p>
+          </div>
+          <button type="button" class="gallery-nav gallery-next" aria-label="Scroll right">&#8250;</button>
+        </div>
+      </section>
+    </main>
 
-      <label for="room">Room</label>
-      <select id="room" name="room" required></select>
+    <aside class="sidebar" id="sidebar">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Collapse sidebar" aria-expanded="true">
+        <span class="chevron">&#8250;</span>
+      </button>
 
-      <label for="description">Description</label>
-      <textarea id="description" name="description" rows="3" placeholder="What's happening in this photo?"></textarea>
+      <div class="sidebar-content">
+        <h1>Share your photos</h1>
+        <p class="subtitle">Upload a photo from the conference and tag where it was taken.</p>
 
-      <label for="contributor">Your name</label>
-      <input type="text" id="contributor" name="contributor" placeholder="Optional" />
+        <form id="upload-form">
+          <label for="photo">Photo</label>
+          <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required />
+          <img id="preview" alt="Selected photo preview" hidden />
 
-      <button type="submit" id="submit-btn">Upload</button>
-    </form>
+          <label for="room">Room</label>
+          <select id="room" name="room" required></select>
 
-    <p id="status" role="status" aria-live="polite"></p>
-  </main>
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3" placeholder="What's happening in this photo?"></textarea>
+
+          <label for="contributor">Your name</label>
+          <input type="text" id="contributor" name="contributor" placeholder="Optional" />
+
+          <button type="submit" id="submit-btn">Upload</button>
+        </form>
+
+        <p id="status" role="status" aria-live="polite"></p>
+      </div>
+    </aside>
+  </div>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+    <img id="lightbox-image" alt="" />
+    <p id="lightbox-caption"></p>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
