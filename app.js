@@ -27,7 +27,7 @@ let lastSubmitAt = 0;
 const savedAccessCode = localStorage.getItem(ACCESS_CODE_STORAGE_KEY);
 if (savedAccessCode) accessCodeInput.value = savedAccessCode;
 
-for (const room of ROOMS) {
+for (const room of [...ROOMS].sort((a, b) => a.localeCompare(b))) {
   const option = document.createElement("option");
   option.value = room;
   option.textContent = room;
