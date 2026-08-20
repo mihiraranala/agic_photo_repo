@@ -131,6 +131,38 @@ $$;
 revoke all on function public.submit_photo(text, text, text, text, text, text) from public;
 grant execute on function public.submit_photo(text, text, text, text, text, text) to authenticated;
 
+-- ---------- Admin delete access ----------
+-- Admins are regular Supabase Auth users (real email+password, NOT
+-- anonymous sign-in) whose app_metadata carries {"is_admin": true}.
+-- app_metadata (unlike user_metadata) can only be set by an admin/
+-- service-role via SQL or the Auth API — never by the user themselves —
+-- so it's safe to trust inside RLS, unlike a client-supplied value.
+--
+-- To make someone an admin:
+--   1. Dashboard > Authentication > Users > Add user (email + password).
+--   2. Run in the SQL Editor:
+--        update auth.users
+--        set raw_app_meta_data = raw_app_meta_data || '{"is_admin": true}'::jsonb
+--        where email = 'their-email@example.com';
+--   3. If they were already logged in when you ran that, they need to
+--      log out and back in — the claim is baked into the JWT at sign-in
+--      time and won't update on an existing session.
+
+drop policy if exists "Admins can delete photos" on public.photos;
+create policy "Admins can delete photos"
+  on public.photos for delete
+  to authenticated
+  using (coalesce((auth.jwt() -> 'app_metadata' ->> 'is_admin')::boolean, false));
+
+drop policy if exists "Admins can delete photo files" on storage.objects;
+create policy "Admins can delete photo files"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'photos'
+    and coalesce((auth.jwt() -> 'app_metadata' ->> 'is_admin')::boolean, false)
+  );
+
 -- ---------- Storage bucket ----------
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

@@ -104,6 +104,31 @@ Point any QR code generator at the deployed `.vercel.app` URL (or your
 custom domain). Print/display it — and the access code — at the
 conference.
 
+## 7. Set up an admin account (optional, for moderation)
+
+The gallery panel header has a small "Admin" link — signing in there
+reveals a delete (×) button on every photo (gallery thumbnails and the
+full-size lightbox view), for removing anything inappropriate. To
+create an admin account:
+
+1. Dashboard → **Authentication → Users → Add user** → set an email
+   and password (this is a real account, not the anonymous sign-in
+   attendees use).
+2. In the **SQL Editor**, run:
+   ```sql
+   update auth.users
+   set raw_app_meta_data = raw_app_meta_data || '{"is_admin": true}'::jsonb
+   where email = 'your-email@example.com';
+   ```
+3. On the dashboard, click **Admin**, sign in with that email/password.
+
+Deletion is enforced in Postgres (RLS checking this claim on the
+signed-in JWT — see "Admin delete access" in `supabase/schema.sql`),
+not just hidden in the UI, so only actual admins can delete regardless
+of how a request reaches Supabase. Deleting removes both the database
+row and the image file in Storage, and disappears from every open
+dashboard immediately via the realtime feed.
+
 ## Guardrails already in place
 
 - **Conference access code** — enforced in Postgres (`submit_photo()`

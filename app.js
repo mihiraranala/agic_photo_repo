@@ -190,18 +190,97 @@ sidebarToggle.addEventListener("click", () => {
   sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
 });
 
+// ---------- Admin mode ----------
+// Admins are regular (non-anonymous) Supabase Auth users promoted via
+// SQL — see the "Admin delete access" section of supabase/schema.sql.
+// Delete permission itself is enforced there (RLS checking the signed
+// JWT's app_metadata.is_admin); this is just the UI on top of it.
+
+const adminLoginToggle = document.getElementById("admin-login-toggle");
+const adminLoginForm = document.getElementById("admin-login-form");
+const adminEmailInput = document.getElementById("admin-email");
+const adminPasswordInput = document.getElementById("admin-password");
+const adminStatus = document.getElementById("admin-status");
+const adminEmailLabel = document.getElementById("admin-email-label");
+const adminLogoutBtn = document.getElementById("admin-logout");
+
+let isAdmin = false;
+
+function setAdminUI(session) {
+  isAdmin = Boolean(session?.user?.app_metadata?.is_admin);
+  adminLoginToggle.hidden = isAdmin;
+  adminLoginForm.hidden = true;
+  adminStatus.hidden = !isAdmin;
+  if (isAdmin) adminEmailLabel.textContent = session.user.email;
+  refresh();
+}
+
+adminLoginToggle.addEventListener("click", () => {
+  adminLoginForm.hidden = !adminLoginForm.hidden;
+});
+
+adminLoginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: adminEmailInput.value.trim(),
+    password: adminPasswordInput.value,
+  });
+  if (error) {
+    alert("Admin sign-in failed: " + error.message);
+    return;
+  }
+  adminLoginForm.reset();
+  setAdminUI(data.session);
+});
+
+adminLogoutBtn.addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  setAdminUI(null);
+});
+
+// Fires on load with any persisted session (anonymous or admin), and on
+// every future sign-in/out — keeps isAdmin correct without a separate
+// initial getSession() check.
+supabase.auth.onAuthStateChange((_event, session) => {
+  setAdminUI(session);
+});
+
+async function deletePhoto(photo) {
+  if (!confirm("Delete this photo? This can't be undone.")) return;
+
+  const { error: deleteError } = await supabase.from("photos").delete().eq("id", photo.id);
+  if (deleteError) {
+    console.error(deleteError);
+    alert("Couldn't delete the photo: " + deleteError.message);
+    return;
+  }
+
+  // Best-effort cleanup — if this fails, the file is just an orphaned,
+  // invisible blob (nothing reads Storage directly), not worth blocking
+  // the moderation action on. The realtime DELETE event above already
+  // removes the photo from every connected dashboard's view.
+  const { error: removeError } = await supabase.storage.from(PHOTOS_BUCKET).remove([photo.storage_path]);
+  if (removeError) console.error(removeError);
+}
+
 // ---------- Lightbox ----------
 
 const lightbox = document.getElementById("lightbox");
 const lightboxImage = document.getElementById("lightbox-image");
 const lightboxCaption = document.getElementById("lightbox-caption");
 const lightboxClose = document.getElementById("lightbox-close");
+const lightboxDelete = document.getElementById("lightbox-delete");
 
 function openLightbox(photo) {
   lightboxImage.src = photo.image_url;
   lightboxImage.alt = photo.description || photo.room;
   const parts = [photo.room, photo.contributor, photo.description].filter(Boolean);
   lightboxCaption.textContent = parts.join(" — ");
+  lightboxDelete.hidden = !isAdmin;
+  lightboxDelete.onclick = () => {
+    lightbox.hidden = true;
+    deletePhoto(photo);
+  };
   lightbox.hidden = false;
 }
 
@@ -243,6 +322,19 @@ function renderGallery(photos) {
     label.className = "gallery-item-room";
     label.textContent = photo.room;
     item.appendChild(label);
+
+    if (isAdmin) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "gallery-item-delete";
+      deleteBtn.setAttribute("aria-label", "Delete photo");
+      deleteBtn.textContent = "×";
+      deleteBtn.addEventListener("click", (event) => {
+        event.stopPropagation(); // don't also open the lightbox
+        deletePhoto(photo);
+      });
+      item.appendChild(deleteBtn);
+    }
 
     item.addEventListener("click", () => openLightbox(photo));
     galleryTrack.appendChild(item);

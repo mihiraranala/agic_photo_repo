@@ -133,6 +133,111 @@ body {
   );
 }
 
+/* ---------- Admin mode ---------- */
+
+.admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-link {
+  margin: 0;
+  padding: 2px 8px;
+  background: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.admin-link:hover {
+  color: var(--text);
+  border-color: var(--accent-dim);
+}
+
+#admin-login-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#admin-login-form input {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+
+#admin-login-form button {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+
+#admin-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+#admin-status button {
+  margin: 0;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  border-radius: 6px;
+  background: var(--grid-line);
+  border-color: var(--panel-border);
+  color: var(--text);
+}
+
+.gallery-item-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(20, 10, 10, 0.75);
+  color: #ff8a7a;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gallery-item-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.lightbox-delete {
+  position: absolute;
+  top: 16px;
+  left: 24px;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--danger);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.lightbox-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 .floorplan-stage {
   position: relative;
   flex: 1;

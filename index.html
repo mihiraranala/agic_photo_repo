@@ -28,6 +28,18 @@
       <section class="panel gallery-panel">
         <div class="panel-header">
           <h2>Recent photos</h2>
+          <div class="admin-controls" id="admin-controls">
+            <button type="button" id="admin-login-toggle" class="admin-link">Admin</button>
+            <form id="admin-login-form" hidden>
+              <input type="email" id="admin-email" placeholder="Email" autocomplete="username" required />
+              <input type="password" id="admin-password" placeholder="Password" autocomplete="current-password" required />
+              <button type="submit">Sign in</button>
+            </form>
+            <div id="admin-status" hidden>
+              <span id="admin-email-label"></span>
+              <button type="button" id="admin-logout">Log out</button>
+            </div>
+          </div>
         </div>
         <div class="gallery-slider">
           <button type="button" class="gallery-nav gallery-prev" aria-label="Scroll left">&#8249;</button>
@@ -82,6 +94,7 @@
 
   <div class="lightbox" id="lightbox" hidden>
     <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+    <button type="button" class="lightbox-delete" id="lightbox-delete" hidden>Delete photo</button>
     <img id="lightbox-image" alt="" />
     <p id="lightbox-caption"></p>
   </div>
