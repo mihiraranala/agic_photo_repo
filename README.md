@@ -69,17 +69,21 @@ Open `config.js` and:
   for why; access is controlled by the RLS policies and the
   `submit_photo()` function in `supabase/schema.sql`, not by keeping
   this key secret.)
-- Edit the `ROOMS` array to match your venue. It currently lists every
-  labeled space on `floorplan.jpeg` (meeting rooms and amenities alike).
-- `FLOOR_PLAN_IMAGE` points at `floorplan.jpeg` in the repo root. Swap
-  in a different image any time by replacing that file (or changing the
-  filename in `config.js`).
-- `ROOM_POSITIONS` maps each room name to where it sits on the floor
-  plan image, as a percentage of the image's width/height (`x: 0` = left
-  edge, `x: 100` = right edge, same for `y` top/bottom). This is what
-  the heatmap uses to place each room's hot spot. The current values are
-  eyeballed estimates — open the dashboard, see where each dot lands
-  relative to its room label, and nudge the numbers until they line up.
+- Edit the `ROOMS` array to match your venue's taggable spaces.
+- The floor plan itself is built from CSS, not an image — edit
+  `ROOM_SHAPES` in `config.js` to match your venue's layout: each room's
+  bounding box as a percentage of the map's width/height (`left`/`top`/
+  `width`/`height`, `0`/`100` = left-right or top-bottom edge) plus a
+  `category` picking one of the six legend colors (see `ROOM_CATEGORIES`
+  for what each category means). `MAP_CONTEXT` holds non-taggable
+  orientation elements (restrooms, entrances, directional signage) shown
+  the same way but not clickable.
+- `ROOM_POSITIONS` maps each room name to where its heatmap "hot spot"
+  and photo markers sit, as a percentage of the map's width/height —
+  should land at/near the center of that room's `ROOM_SHAPES` box.
+- All of the above are eyeballed estimates — open the dashboard, see how
+  each room's box and hot spot line up, and nudge the numbers until they
+  match your venue.
 
 ## 4. Push to GitHub
 

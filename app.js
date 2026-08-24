@@ -1,4 +1,12 @@
-import { ROOMS, ROOM_POSITIONS, FLOOR_PLAN_IMAGE, SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import {
+  ROOMS,
+  ROOM_POSITIONS,
+  ROOM_SHAPES,
+  ROOM_CATEGORIES,
+  MAP_CONTEXT,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+} from "./config.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // keep in sync with the "photos" bucket's file_size_limit
@@ -409,33 +417,134 @@ function renderGallery(photos) {
   }
 }
 
-// ---------- Floor plan heatmap ----------
+// ---------- Floor plan (CSS-built) ----------
 
-const floorplanImage = document.getElementById("floorplan-image");
+const floorplanMap = document.getElementById("floorplan-map");
 const floorplanStage = document.getElementById("floorplan-stage");
 const floorplanZoom = document.getElementById("floorplan-zoom");
 const floorplanMarkers = document.getElementById("floorplan-markers");
 const heatmapCanvas = document.getElementById("heatmap-canvas");
 const heatmapCtx = heatmapCanvas.getContext("2d");
 
-floorplanImage.src = FLOOR_PLAN_IMAGE;
+// Builds the venue floor plan itself from ROOM_SHAPES/MAP_CONTEXT
+// (config.js) as absolutely-positioned divs — a static layout, so this
+// only needs to run once at startup, before the first
+// sizeOverlaysToMap() call.
+function renderFloorPlanMap() {
+  const legend = document.createElement("div");
+  legend.className = "map-legend";
+  for (const { key, label } of ROOM_CATEGORIES) {
+    const row = document.createElement("div");
+    row.className = "map-legend-row";
+    const swatch = document.createElement("span");
+    swatch.className = `map-legend-swatch cat-${key}`;
+    row.appendChild(swatch);
+    const text = document.createElement("span");
+    text.textContent = label;
+    row.appendChild(text);
+    legend.appendChild(row);
+  }
+  floorplanMap.appendChild(legend);
+
+  for (const room of ROOMS) {
+    const shape = ROOM_SHAPES[room];
+    if (!shape) continue; // e.g. Registration, drawn as a pin below instead
+    const el = document.createElement("div");
+    el.className = `map-room cat-${shape.category}`;
+    el.style.left = `${shape.left}%`;
+    el.style.top = `${shape.top}%`;
+    el.style.width = `${shape.width}%`;
+    el.style.height = `${shape.height}%`;
+    el.textContent = room;
+    floorplanMap.appendChild(el);
+  }
+
+  for (const item of MAP_CONTEXT) {
+    const el = document.createElement("div");
+    el.style.left = `${item.left}%`;
+    el.style.top = `${item.top}%`;
+    el.style.width = `${item.width}%`;
+    el.style.height = `${item.height}%`;
+
+    if (item.type === "arrow") {
+      el.className = `map-context map-arrow arrow-${item.direction}`;
+      const glyph = document.createElement("span");
+      glyph.textContent = item.direction === "left" ? "←" : "→";
+      const text = document.createElement("span");
+      text.textContent = item.label;
+      el.append(glyph, text);
+    } else {
+      el.className = item.type === "icon" ? "map-context map-icon" : "map-context map-box";
+      const glyph = document.createElement("span");
+      glyph.className = "map-icon-glyph";
+      glyph.textContent = item.icon;
+      const text = document.createElement("span");
+      text.textContent = item.label;
+      el.append(glyph, text);
+    }
+    floorplanMap.appendChild(el);
+  }
+
+  const registrationPos = ROOM_POSITIONS.Registration;
+  if (registrationPos) {
+    const pin = document.createElement("div");
+    pin.className = "map-registration-pin";
+    pin.style.left = `${registrationPos.x}%`;
+    pin.style.top = `${registrationPos.y}%`;
+    const dot = document.createElement("span");
+    dot.className = "pin-dot";
+    const text = document.createElement("span");
+    text.textContent = "Registration";
+    pin.append(dot, text);
+    floorplanMap.appendChild(pin);
+  }
+}
+
+renderFloorPlanMap();
 
 let lastCounts = {};
 
+// The map div has no intrinsic size (its children are all absolutely
+// positioned, so they don't contribute to layout) and .floorplan-zoom's
+// transform doesn't affect the untransformed box it's centered in, so
+// this sizes .floorplan-map itself — replicating the object-fit:contain
+// letterboxing the original <img> got for free from its natural size.
+// Only depends on the stage's own size (not zoom/pan), so it only needs
+// to re-run on actual resizes, not on every zoom/pan tick.
+const MAP_ASPECT_RATIO = 1545 / 2000;
+
+function sizeFloorplanMap() {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  const availWidth = stageRect.width;
+  const availHeight = stageRect.height;
+  if (availWidth === 0 || availHeight === 0) return;
+
+  let width = availWidth;
+  let height = width / MAP_ASPECT_RATIO;
+  if (height > availHeight) {
+    height = availHeight;
+    width = height * MAP_ASPECT_RATIO;
+  }
+  floorplanMap.style.width = `${width}px`;
+  floorplanMap.style.height = `${height}px`;
+
+  sizeOverlaysToMap();
+}
+
 // Sizes/positions the heatmap canvas and the marker layer to exactly
-// overlay the rendered floor plan image. Both are siblings of the
+// overlay the rendered floor plan map. Both are siblings of the
 // transformed .floorplan-zoom wrapper (not children of it), so their CSS
 // pixel dimensions already reflect the current zoom/pan — no extra
 // transform math needed here, just re-measure after every change.
-function sizeOverlaysToImage() {
+function sizeOverlaysToMap() {
   const stageRect = floorplanStage.getBoundingClientRect();
-  const imgRect = floorplanImage.getBoundingClientRect();
-  const width = imgRect.width;
-  const height = imgRect.height;
+  const mapRect = floorplanMap.getBoundingClientRect();
+  const width = mapRect.width;
+  const height = mapRect.height;
   if (width === 0 || height === 0) return;
 
-  const left = imgRect.left - stageRect.left;
-  const top = imgRect.top - stageRect.top;
+  const left = mapRect.left - stageRect.left;
+  const top = mapRect.top - stageRect.top;
 
   for (const el of [heatmapCanvas, floorplanMarkers]) {
     el.style.left = `${left}px`;
@@ -478,7 +587,7 @@ function applyZoomTransform() {
   floorplanZoom.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
   floorplanStage.classList.toggle("zoomed-in", zoomScale > MARKER_ZOOM_THRESHOLD);
   floorplanStage.classList.toggle("can-pan", zoomScale > MIN_ZOOM);
-  sizeOverlaysToImage();
+  sizeOverlaysToMap();
 }
 
 // Zooms to newScale while keeping the content under (cx, cy) — stage-
@@ -752,10 +861,10 @@ function drawHeatmap(counts) {
   }
 }
 
-floorplanImage.addEventListener("load", sizeOverlaysToImage);
-window.addEventListener("resize", sizeOverlaysToImage);
+sizeFloorplanMap();
+window.addEventListener("resize", sizeFloorplanMap);
 if (window.ResizeObserver) {
-  new ResizeObserver(sizeOverlaysToImage).observe(floorplanStage);
+  new ResizeObserver(sizeFloorplanMap).observe(floorplanStage);
 }
 
 // ---------- Live photos feed ----------
