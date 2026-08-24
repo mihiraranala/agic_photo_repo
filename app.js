@@ -413,6 +413,8 @@ function renderGallery(photos) {
 
 const floorplanImage = document.getElementById("floorplan-image");
 const floorplanStage = document.getElementById("floorplan-stage");
+const floorplanZoom = document.getElementById("floorplan-zoom");
+const floorplanMarkers = document.getElementById("floorplan-markers");
 const heatmapCanvas = document.getElementById("heatmap-canvas");
 const heatmapCtx = heatmapCanvas.getContext("2d");
 
@@ -420,17 +422,27 @@ floorplanImage.src = FLOOR_PLAN_IMAGE;
 
 let lastCounts = {};
 
-function sizeCanvasToImage() {
+// Sizes/positions the heatmap canvas and the marker layer to exactly
+// overlay the rendered floor plan image. Both are siblings of the
+// transformed .floorplan-zoom wrapper (not children of it), so their CSS
+// pixel dimensions already reflect the current zoom/pan — no extra
+// transform math needed here, just re-measure after every change.
+function sizeOverlaysToImage() {
   const stageRect = floorplanStage.getBoundingClientRect();
   const imgRect = floorplanImage.getBoundingClientRect();
   const width = imgRect.width;
   const height = imgRect.height;
   if (width === 0 || height === 0) return;
 
-  heatmapCanvas.style.left = `${imgRect.left - stageRect.left}px`;
-  heatmapCanvas.style.top = `${imgRect.top - stageRect.top}px`;
-  heatmapCanvas.style.width = `${width}px`;
-  heatmapCanvas.style.height = `${height}px`;
+  const left = imgRect.left - stageRect.left;
+  const top = imgRect.top - stageRect.top;
+
+  for (const el of [heatmapCanvas, floorplanMarkers]) {
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+    el.style.width = `${width}px`;
+    el.style.height = `${height}px`;
+  }
 
   const dpr = window.devicePixelRatio || 1;
   heatmapCanvas.width = width * dpr;
@@ -438,6 +450,240 @@ function sizeCanvasToImage() {
   heatmapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   drawHeatmap(lastCounts);
+}
+
+// ---------- Floor plan zoom & pan ----------
+// Below MARKER_ZOOM_THRESHOLD the room heatmap (aggregate, non-interactive)
+// is shown; above it, individual clickable photo markers take over so a
+// zoomed-in viewer can tap a specific photo instead of a room-level blob.
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const MARKER_ZOOM_THRESHOLD = 1.6;
+
+let zoomScale = 1;
+let panX = 0;
+let panY = 0;
+
+function clampPan() {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  const minX = Math.min(0, stageRect.width * (1 - zoomScale));
+  const minY = Math.min(0, stageRect.height * (1 - zoomScale));
+  panX = Math.min(0, Math.max(minX, panX));
+  panY = Math.min(0, Math.max(minY, panY));
+}
+
+function applyZoomTransform() {
+  clampPan();
+  floorplanZoom.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+  floorplanStage.classList.toggle("zoomed-in", zoomScale > MARKER_ZOOM_THRESHOLD);
+  floorplanStage.classList.toggle("can-pan", zoomScale > MIN_ZOOM);
+  sizeOverlaysToImage();
+}
+
+// Zooms to newScale while keeping the content under (cx, cy) — stage-
+// relative coordinates — fixed on screen, the way map UIs zoom under the cursor.
+function zoomAt(cx, cy, newScale) {
+  newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+  if (newScale === zoomScale) return;
+  const ratio = newScale / zoomScale;
+  panX = cx - ratio * (cx - panX);
+  panY = cy - ratio * (cy - panY);
+  zoomScale = newScale;
+  applyZoomTransform();
+}
+
+function stagePoint(clientX, clientY) {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  return { x: clientX - stageRect.left, y: clientY - stageRect.top };
+}
+
+floorplanStage.addEventListener(
+  "wheel",
+  (event) => {
+    event.preventDefault();
+    const { x, y } = stagePoint(event.clientX, event.clientY);
+    zoomAt(x, y, zoomScale * (1 - event.deltaY * 0.0015));
+  },
+  { passive: false }
+);
+
+floorplanStage.addEventListener("dblclick", (event) => {
+  const { x, y } = stagePoint(event.clientX, event.clientY);
+  zoomAt(x, y, zoomScale < MAX_ZOOM ? zoomScale + 1.5 : 1);
+});
+
+document.getElementById("zoom-in").addEventListener("click", () => {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  zoomAt(stageRect.width / 2, stageRect.height / 2, zoomScale + 1);
+});
+document.getElementById("zoom-out").addEventListener("click", () => {
+  const stageRect = floorplanStage.getBoundingClientRect();
+  zoomAt(stageRect.width / 2, stageRect.height / 2, zoomScale - 1);
+});
+document.getElementById("zoom-reset").addEventListener("click", () => {
+  zoomScale = 1;
+  panX = 0;
+  panY = 0;
+  applyZoomTransform();
+});
+
+// Mouse drag-to-pan. Tracks whether the pointer actually moved so a plain
+// click (no drag) still reaches a marker underneath instead of being
+// swallowed by the pan handling.
+let dragging = false;
+let dragMoved = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let panStartX = 0;
+let panStartY = 0;
+
+floorplanStage.addEventListener("mousedown", (event) => {
+  if (zoomScale <= MIN_ZOOM) return;
+  dragging = true;
+  dragMoved = false;
+  dragStartX = event.clientX;
+  dragStartY = event.clientY;
+  panStartX = panX;
+  panStartY = panY;
+  floorplanStage.classList.add("panning");
+});
+
+window.addEventListener("mousemove", (event) => {
+  if (!dragging) return;
+  const dx = event.clientX - dragStartX;
+  const dy = event.clientY - dragStartY;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragMoved = true;
+  panX = panStartX + dx;
+  panY = panStartY + dy;
+  applyZoomTransform();
+});
+
+window.addEventListener("mouseup", () => {
+  if (!dragging) return;
+  dragging = false;
+  floorplanStage.classList.remove("panning");
+});
+
+// Swallow the click that follows a drag so releasing over a marker
+// doesn't also open its lightbox.
+floorplanMarkers.addEventListener(
+  "click",
+  (event) => {
+    if (dragMoved) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+    }
+  },
+  true
+);
+
+// Touch: one finger pans (when zoomed in), two fingers pinch-zoom.
+function touchDistance(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+let touchState = null;
+
+floorplanStage.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.touches.length === 2) {
+      const [t1, t2] = event.touches;
+      const mid = stagePoint((t1.clientX + t2.clientX) / 2, (t1.clientY + t2.clientY) / 2);
+      touchState = {
+        mode: "pinch",
+        startDist: touchDistance(t1, t2),
+        startScale: zoomScale,
+        startPanX: panX,
+        startPanY: panY,
+        midX: mid.x,
+        midY: mid.y,
+      };
+    } else if (event.touches.length === 1 && zoomScale > MIN_ZOOM) {
+      touchState = {
+        mode: "pan",
+        startX: event.touches[0].clientX,
+        startY: event.touches[0].clientY,
+        startPanX: panX,
+        startPanY: panY,
+      };
+    }
+  },
+  { passive: true }
+);
+
+floorplanStage.addEventListener(
+  "touchmove",
+  (event) => {
+    if (!touchState) return;
+    if (touchState.mode === "pinch" && event.touches.length === 2) {
+      event.preventDefault();
+      const [t1, t2] = event.touches;
+      const newScale = Math.max(
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, touchState.startScale * (touchDistance(t1, t2) / touchState.startDist))
+      );
+      const ratio = newScale / touchState.startScale;
+      panX = touchState.midX - ratio * (touchState.midX - touchState.startPanX);
+      panY = touchState.midY - ratio * (touchState.midY - touchState.startPanY);
+      zoomScale = newScale;
+      applyZoomTransform();
+    } else if (touchState.mode === "pan" && event.touches.length === 1) {
+      event.preventDefault();
+      panX = touchState.startPanX + (event.touches[0].clientX - touchState.startX);
+      panY = touchState.startPanY + (event.touches[0].clientY - touchState.startY);
+      applyZoomTransform();
+    }
+  },
+  { passive: false }
+);
+
+floorplanStage.addEventListener("touchend", () => {
+  touchState = null;
+});
+
+// ---------- Floor plan photo markers (zoomed-in mode) ----------
+
+// Multiple photos tagged to the same room share one ROOM_POSITIONS point;
+// spread them in a small ring (in image-percent units, so it scales with
+// zoom) so each stays individually clickable instead of stacking exactly.
+function markerOffsetsFor(count) {
+  if (count <= 1) return [{ dx: 0, dy: 0 }];
+  const radius = 2 + Math.min(count, 12) * 0.3;
+  const offsets = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    offsets.push({ dx: radius * Math.cos(angle), dy: radius * Math.sin(angle) });
+  }
+  return offsets;
+}
+
+function renderPhotoMarkers(photos) {
+  floorplanMarkers.innerHTML = "";
+
+  const byRoom = {};
+  for (const photo of photos) {
+    (byRoom[photo.room] ||= []).push(photo);
+  }
+
+  for (const room of Object.keys(byRoom)) {
+    const pos = ROOM_POSITIONS[room];
+    if (!pos) continue;
+
+    const roomPhotos = byRoom[room];
+    const offsets = markerOffsetsFor(roomPhotos.length);
+    roomPhotos.forEach((photo, i) => {
+      const marker = document.createElement("button");
+      marker.type = "button";
+      marker.className = "floorplan-marker";
+      marker.style.left = `${pos.x + offsets[i].dx}%`;
+      marker.style.top = `${pos.y + offsets[i].dy}%`;
+      marker.setAttribute("aria-label", `View photo from ${room}`);
+      marker.addEventListener("click", () => openLightbox(photo));
+      floorplanMarkers.appendChild(marker);
+    });
+  }
 }
 
 // Cold -> hot colormap, matching the gradient bar in the panel header's
@@ -506,10 +752,10 @@ function drawHeatmap(counts) {
   }
 }
 
-floorplanImage.addEventListener("load", sizeCanvasToImage);
-window.addEventListener("resize", sizeCanvasToImage);
+floorplanImage.addEventListener("load", sizeOverlaysToImage);
+window.addEventListener("resize", sizeOverlaysToImage);
 if (window.ResizeObserver) {
-  new ResizeObserver(sizeCanvasToImage).observe(floorplanStage);
+  new ResizeObserver(sizeOverlaysToImage).observe(floorplanStage);
 }
 
 // ---------- Live photos feed ----------
@@ -519,6 +765,7 @@ let photos = [];
 function refresh() {
   photoCountBadge.textContent = `${photos.length} photo${photos.length === 1 ? "" : "s"}`;
   renderGallery(photos.slice(0, GALLERY_LIMIT));
+  renderPhotoMarkers(photos);
 
   const counts = {};
   for (const photo of photos) {

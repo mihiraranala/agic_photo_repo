@@ -193,6 +193,40 @@ body {
   );
 }
 
+/* ---------- Floor plan zoom controls ---------- */
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-controls button {
+  margin: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--grid-line);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+#zoom-reset {
+  width: auto;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.zoom-controls button:hover {
+  background: #22304a;
+  border-color: var(--accent-dim);
+}
+
 /* ---------- Admin mode ---------- */
 
 .admin-controls {
@@ -310,14 +344,29 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background:
     linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 / 24px 24px,
     var(--blueprint);
   overflow: hidden;
+  touch-action: none;
+}
+
+.floorplan-stage.can-pan {
+  cursor: grab;
+}
+
+.floorplan-stage.can-pan.panning {
+  cursor: grabbing;
+}
+
+.floorplan-zoom {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 0 0;
 }
 
 #floorplan-image {
@@ -325,11 +374,50 @@ body {
   max-height: 100%;
   object-fit: contain;
   display: block;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 #heatmap-canvas {
   position: absolute;
   pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.floorplan-stage.zoomed-in #heatmap-canvas {
+  opacity: 0;
+}
+
+/* ---------- Floor plan photo markers (zoomed-in mode) ---------- */
+
+.floorplan-markers {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.floorplan-stage.zoomed-in .floorplan-markers {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.floorplan-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.floorplan-marker:hover {
+  background: var(--success);
 }
 
 /* ---------- Gallery slider ---------- */
