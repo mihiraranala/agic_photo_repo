@@ -180,6 +180,40 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+// ---------- Share button ----------
+
+const SHARE_MESSAGE = "Come join the AGIC fun";
+
+const shareBtn = document.getElementById("share-btn");
+const shareMenu = document.getElementById("share-menu");
+const shareTextLink = document.getElementById("share-text-link");
+const shareEmailLink = document.getElementById("share-email-link");
+
+const shareUrl = window.location.href;
+shareTextLink.href = `sms:?&body=${encodeURIComponent(`${SHARE_MESSAGE} ${shareUrl}`)}`;
+shareEmailLink.href = `mailto:?subject=${encodeURIComponent(SHARE_MESSAGE)}&body=${encodeURIComponent(`${SHARE_MESSAGE}\n\n${shareUrl}`)}`;
+
+shareBtn.addEventListener("click", async () => {
+  // Prefer the native share sheet (lets the user pick Messages, Mail, or
+  // any other app) where the browser supports it; fall back to the
+  // text/email dropdown otherwise.
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "AGIC Education and Training Symposium", text: SHARE_MESSAGE, url: shareUrl });
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return; // user dismissed the share sheet
+    }
+  }
+  shareMenu.hidden = !shareMenu.hidden;
+});
+
+document.addEventListener("click", (event) => {
+  if (!shareMenu.hidden && !event.target.closest(".share-controls")) {
+    shareMenu.hidden = true;
+  }
+});
+
 // ---------- Sidebar collapse ----------
 
 const dashboard = document.querySelector(".dashboard");
