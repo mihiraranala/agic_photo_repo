@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AGIC Education and Training Symposium — Photo Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -36,7 +42,164 @@
         </div>
         <div class="floorplan-stage" id="floorplan-stage">
           <div class="floorplan-zoom" id="floorplan-zoom">
-            <div class="floorplan-map" id="floorplan-map" role="img" aria-label="Venue floor plan"></div>
+            <svg
+              class="floorplan-map"
+              id="floorplan-map"
+              viewBox="0 0 1600 1560"
+              role="img"
+              aria-label="Venue floor plan"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <!-- ===================== TITLE ===================== -->
+              <text x="70" y="90" class="title-font" font-size="46" font-weight="900" fill="#eafcff"
+                    style="filter:drop-shadow(0 0 10px rgba(0,229,255,0.6))">
+                CONFERENCE AREA MAP
+              </text>
+              <line x1="70" y1="108" x2="640" y2="108" stroke="var(--map-cyan)" stroke-width="2" opacity="0.6"/>
+              <text x="70" y="132" class="small-note title-font" font-size="13" letter-spacing="3">SECTOR OVERVIEW // AGIC SYMPOSIUM</text>
+
+              <!-- ===================== LEGEND ===================== -->
+              <g font-size="19">
+                <rect x="70" y="170" width="46" height="34" rx="4" fill="var(--map-orange)" class="room-fill glow-orange"/>
+                <rect x="70" y="170" width="46" height="34" rx="4" class="room-stroke glow-orange" stroke="var(--map-orange)"/>
+                <text x="128" y="187" class="legend-text">Keynote, Luncheons, Exhibits,</text>
+                <text x="128" y="209" class="legend-text">Exhibitor Social</text>
+
+                <rect x="70" y="228" width="46" height="34" rx="4" fill="var(--map-cyan)" class="room-fill glow-cyan"/>
+                <rect x="70" y="228" width="46" height="34" rx="4" class="room-stroke glow-cyan" stroke="var(--map-cyan)"/>
+                <text x="128" y="245" class="legend-text">Breakout, Technical, and Panel</text>
+                <text x="128" y="267" class="legend-text">Sessions</text>
+
+                <rect x="70" y="286" width="46" height="34" rx="4" fill="var(--map-green)" class="room-fill glow-green"/>
+                <rect x="70" y="286" width="46" height="34" rx="4" class="room-stroke glow-green" stroke="var(--map-green)"/>
+                <text x="128" y="308" class="legend-text">Hands-On Workshop Lab</text>
+
+                <rect x="70" y="332" width="46" height="34" rx="4" fill="var(--map-peach)" class="room-fill glow-peach"/>
+                <rect x="70" y="332" width="46" height="34" rx="4" class="room-stroke glow-peach" stroke="var(--map-peach)"/>
+                <text x="128" y="354" class="legend-text">Map Gallery, Registration</text>
+
+                <rect x="70" y="378" width="46" height="34" rx="4" fill="var(--map-gold)" class="room-fill glow-gold"/>
+                <rect x="70" y="378" width="46" height="34" rx="4" class="room-stroke glow-gold" stroke="var(--map-gold)"/>
+                <text x="128" y="400" class="legend-text">Speaker Prep Room</text>
+
+                <rect x="70" y="424" width="46" height="34" rx="4" fill="var(--map-gray)" class="room-fill glow-gray"/>
+                <rect x="70" y="424" width="46" height="34" rx="4" class="room-stroke glow-gray" stroke="var(--map-gray)"/>
+                <text x="128" y="446" class="legend-text">Conference Staff</text>
+
+                <rect x="70" y="470" width="46" height="34" rx="4" fill="var(--map-restroom)" class="room-fill glow-gray"/>
+                <rect x="70" y="470" width="46" height="34" rx="4" class="room-stroke glow-gray" stroke="var(--map-restroom)"/>
+                <text x="128" y="492" class="legend-text">Restrooms</text>
+              </g>
+
+              <!-- ===================== FIREPIT ===================== -->
+              <g transform="translate(1430,150)">
+                <text x="0" y="-30" class="title-font legend-text" font-size="15" text-anchor="middle" letter-spacing="2">FIREPIT</text>
+                <circle r="34" fill="none" stroke="var(--map-orange)" stroke-width="2" class="glow-flame pulse" opacity="0.7"/>
+                <circle r="20" fill="rgba(255,122,26,0.15)" stroke="var(--map-orange)" stroke-width="2" class="glow-flame"/>
+                <path d="M0,-10 C 6,-2 8,4 3,10 C 6,7 9,2 8,-3 C 12,3 10,10 4,13 C -3,15 -8,9 -6,2 C -8,4 -9,-1 -6,-6 C -5,-2 -3,-1 -3,-4 C -2,-8 1,-9 0,-10 Z"
+                      fill="var(--map-orange)" class="glow-flame pulse"/>
+              </g>
+
+              <!-- ===================== GRANITE MOUNTAIN ROOM ===================== -->
+              <path d="M 950,240
+                       L 1230,240
+                       L 1230,660
+                       L 1000,660
+                       L 1000,610 L 960,610 L 960,560 L 985,560 L 985,510
+                       L 950,470 Z"
+                    class="room-fill glow-cyan" fill="var(--map-cyan)"/>
+              <path d="M 950,240
+                       L 1230,240
+                       L 1230,660
+                       L 1000,660
+                       L 1000,610 L 960,610 L 960,560 L 985,560 L 985,510
+                       L 950,470 Z"
+                    class="room-stroke glow-cyan" stroke="var(--map-cyan)"/>
+              <text x="1090" y="430" class="room-label" font-size="24">GRANITE</text>
+              <text x="1090" y="458" class="room-label" font-size="24">MOUNTAIN</text>
+              <text x="1090" y="486" class="room-label" font-size="24">ROOM</text>
+
+              <!-- ===================== EAGLE'S NEST LOUNGE ===================== -->
+              <rect x="1230" y="270" width="230" height="390" class="room-fill glow-purple" fill="var(--map-purple)"/>
+              <rect x="1230" y="270" width="230" height="390" class="room-stroke glow-purple" stroke="var(--map-purple)"/>
+              <text x="1345" y="450" class="room-label" font-size="23">EAGLE'S</text>
+              <text x="1345" y="478" class="room-label" font-size="23">NEST</text>
+              <text x="1345" y="506" class="room-label" font-size="23">LOUNGE</text>
+
+              <!-- To Hotel Lobby arrow -->
+              <text x="1230" y="700" class="small-note" font-size="16" font-weight="700">TO HOTEL LOBBY,</text>
+              <text x="1230" y="720" class="small-note" font-size="16" font-weight="700">GUEST ROOMS,</text>
+              <text x="1230" y="740" class="small-note" font-size="16" font-weight="700">AND CASINO</text>
+              <line x1="1420" y1="722" x2="1540" y2="722" stroke="var(--map-cyan)" stroke-width="3" class="glow-cyan"/>
+              <polygon points="1540,712 1565,722 1540,732" fill="var(--map-cyan)" class="glow-cyan"/>
+
+              <!-- ===================== CHINO / PRESCOTT ROOM ===================== -->
+              <path d="M 800,520 L 950,480 L 950,720 L 800,720 Z"
+                    class="room-fill glow-cyan" fill="var(--map-cyan)"/>
+              <path d="M 800,520 L 950,480 L 950,720 L 800,720 Z"
+                    class="room-stroke glow-cyan" stroke="var(--map-cyan)"/>
+              <text x="875" y="600" class="room-label" font-size="19">CHINO /</text>
+              <text x="875" y="624" class="room-label" font-size="19">PRESCOTT</text>
+              <text x="875" y="648" class="room-label" font-size="19">ROOM</text>
+
+              <!-- ===================== JEROME ROOM ===================== -->
+              <rect x="800" y="720" width="150" height="130" class="room-fill glow-gold" fill="var(--map-gold)"/>
+              <rect x="800" y="720" width="150" height="130" class="room-stroke glow-gold" stroke="var(--map-gold)"/>
+              <text x="875" y="778" class="room-label" font-size="19">JEROME</text>
+              <text x="875" y="802" class="room-label" font-size="19">ROOM</text>
+
+              <!-- ===================== ARIZONA ROOM ===================== -->
+              <rect x="1130" y="710" width="200" height="200" class="room-fill glow-green" fill="var(--map-green)"/>
+              <rect x="1130" y="710" width="200" height="200" class="room-stroke glow-green" stroke="var(--map-green)"/>
+              <text x="1230" y="800" class="room-label" font-size="21">ARIZONA</text>
+              <text x="1230" y="824" class="room-label" font-size="21">ROOM</text>
+
+              <!-- ===================== RESTROOMS ===================== -->
+              <rect x="1030" y="710" width="100" height="100" class="room-fill glow-gray" fill="var(--map-restroom)"/>
+              <rect x="1030" y="710" width="100" height="100" class="room-stroke glow-gray" stroke="var(--map-restroom)"/>
+              <text x="1080" y="775" text-anchor="middle" font-size="34" fill="var(--map-restroom)" class="glow-gray">&#9794;</text>
+
+              <rect x="1030" y="810" width="100" height="100" class="room-fill glow-gray" fill="var(--map-restroom)"/>
+              <rect x="1030" y="810" width="100" height="100" class="room-stroke glow-gray" stroke="var(--map-restroom)"/>
+              <text x="1080" y="875" text-anchor="middle" font-size="34" fill="var(--map-restroom)" class="glow-gray">&#9792;</text>
+
+              <!-- ===================== BRADSHAW ROOM ===================== -->
+              <rect x="1030" y="910" width="100" height="130" class="room-fill glow-gray" fill="var(--map-gray)"/>
+              <rect x="1030" y="910" width="100" height="130" class="room-stroke glow-gray" stroke="var(--map-gray)"/>
+              <text x="1080" y="960" text-anchor="middle" class="room-label" font-size="15" transform="rotate(-90 1080 975)">BRADSHAW ROOM</text>
+
+              <!-- ===================== BALLROOM ===================== -->
+              <rect x="330" y="900" width="620" height="380" class="room-fill glow-orange" fill="var(--map-orange)"/>
+              <rect x="330" y="900" width="620" height="380" class="room-stroke glow-orange" stroke="var(--map-orange)"/>
+              <text x="640" y="1105" class="room-label" font-size="34" letter-spacing="4">BALLROOM</text>
+              <line x1="330" y1="1280" x2="950" y2="1280" stroke="#050708" stroke-width="6" stroke-dasharray="18 14"/>
+
+              <!-- ===================== COPPER BASIN ROOM ===================== -->
+              <rect x="100" y="1140" width="230" height="300" class="room-fill glow-cyan" fill="var(--map-cyan)"/>
+              <rect x="100" y="1140" width="230" height="300" class="room-stroke glow-cyan" stroke="var(--map-cyan)"/>
+              <text x="215" y="1275" class="room-label" font-size="20">COPPER</text>
+              <text x="215" y="1299" class="room-label" font-size="20">BASIN</text>
+              <text x="215" y="1323" class="room-label" font-size="20">ROOM</text>
+              <line x1="330" y1="1280" x2="330" y2="1440" stroke="#050708" stroke-width="6" stroke-dasharray="18 14"/>
+
+              <!-- ===================== FOYER ===================== -->
+              <path d="M 330,1280 L 1000,1280 L 1000,1440 L 100,1440 L 100,1440 L 330,1440 Z"
+                    class="room-fill glow-peach" fill="var(--map-peach)"/>
+              <path d="M 100,1440 L 330,1440 L 330,1280 L 1000,1280 L 1000,1440 L 100,1440"
+                    class="room-stroke glow-peach" stroke="var(--map-peach)"/>
+              <text x="700" y="1370" class="room-label" font-size="26" letter-spacing="3">FOYER</text>
+
+              <!-- ===================== REGISTRATION ===================== -->
+              <rect x="960" y="1225" width="60" height="55" fill="#8a5a2b" class="glow-orange"/>
+              <circle cx="1000" cy="1280" r="6" fill="var(--map-peach)" class="glow-peach"/>
+              <line x1="1000" y1="1280" x2="1120" y2="1310" stroke="var(--map-peach)" stroke-width="2"/>
+              <text x="1130" y="1318" class="legend-text" font-size="20" font-weight="700">REGISTRATION</text>
+
+              <!-- ===================== TO SOUTH PARKING LOT ===================== -->
+              <polygon points="90,1500 65,1512 90,1524" fill="var(--map-cyan)" class="glow-cyan"/>
+              <line x1="90" y1="1512" x2="200" y2="1512" stroke="var(--map-cyan)" stroke-width="3" class="glow-cyan"/>
+              <text x="215" y="1519" class="small-note" font-size="17" font-weight="700">TO SOUTH PARKING LOT</text>
+            </svg>
           </div>
           <canvas id="heatmap-canvas"></canvas>
           <div class="floorplan-markers" id="floorplan-markers"></div>

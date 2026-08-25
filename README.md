@@ -70,20 +70,18 @@ Open `config.js` and:
   `submit_photo()` function in `supabase/schema.sql`, not by keeping
   this key secret.)
 - Edit the `ROOMS` array to match your venue's taggable spaces.
-- The floor plan itself is built from CSS, not an image — edit
-  `ROOM_SHAPES` in `config.js` to match your venue's layout: each room's
-  bounding box as a percentage of the map's width/height (`left`/`top`/
-  `width`/`height`, `0`/`100` = left-right or top-bottom edge) plus a
-  `category` picking one of the six legend colors (see `ROOM_CATEGORIES`
-  for what each category means). `MAP_CONTEXT` holds non-taggable
-  orientation elements (restrooms, entrances, directional signage) shown
-  the same way but not clickable.
-- `ROOM_POSITIONS` maps each room name to where its heatmap "hot spot"
-  and photo markers sit, as a percentage of the map's width/height —
-  should land at/near the center of that room's `ROOM_SHAPES` box.
-- All of the above are eyeballed estimates — open the dashboard, see how
-  each room's box and hot spot line up, and nudge the numbers until they
-  match your venue.
+- The floor plan itself is hand-drawn inline SVG markup — the
+  `<svg id="floorplan-map">` block in `index.html` (viewBox `0 0 1600
+  1560`) — not generated from `config.js` and not an image file. To
+  match a different venue, edit that SVG's shapes/labels directly (each
+  room is a `<rect>`/`<path>` + `<text>` group; copy an existing room's
+  markup as a starting point).
+- `ROOM_POSITIONS` in `config.js` maps each room name to where its
+  heatmap "hot spot" and photo markers sit, as a percentage of the SVG's
+  1600×1560 viewBox — should land at/near the center of that room's
+  shape. These are computed from the SVG's coordinates; open the
+  dashboard, see how each dot lands, and nudge the numbers until they
+  line up if you redraw the SVG.
 
 ## 4. Push to GitHub
 
