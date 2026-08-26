@@ -27,20 +27,23 @@ export const ROOMS = [
 // "hot spot" — should land at/near the center of that room's shape in
 // the SVG.
 //
-// These x/y values were computed from the SVG's room coordinates and
-// will likely need small tweaks if the SVG changes — open the dashboard,
-// see where each dot lands relative to its room, and nudge the numbers
-// below until they line up.
+// These x/y values are the geometric centers of each room's actual
+// <rect>/<path> shape in the SVG (bounding-box center for rects, true
+// polygon centroid for the irregular ones) — not eyeballed from where
+// each room's text label happens to sit, since a label's position is
+// often nudged off-center for legibility and that offset otherwise ends
+// up baked into every dot. If you redraw the SVG, recompute these from
+// the new shapes rather than from where the new labels land.
 export const ROOM_POSITIONS = {
   "Arizona Room": { x: 76.9, y: 51.9 },
   "Ballroom": { x: 40, y: 69.9 },
   "Bradshaw Room": { x: 67.5, y: 62.5 },
-  "Chino/Prescott Room": { x: 54.7, y: 40 },
+  "Chino/Prescott Room": { x: 54.8, y: 39.1 },
   "Copper Basin Room": { x: 13.4, y: 82.7 },
   "Eagle's Nest Lounge": { x: 84.1, y: 29.8 },
   "Firepit": { x: 89.4, y: 9.6 },
-  "Foyer": { x: 43.8, y: 87.8 },
-  "Granite Mountain Room": { x: 68.1, y: 29.4 },
+  "Foyer": { x: 41.6, y: 87.2 },
+  "Granite Mountain Room": { x: 68.5, y: 28.5 },
   "Jerome Room": { x: 54.7, y: 50.3 },
   "Registration": { x: 62.5, y: 82.1 },
 };
